@@ -3,9 +3,9 @@
   "id": "levelListExtension",
   "name": "levelListExtension",
   "author": "",
-  "version": "0.0.1",
+  "version": "0.0.2",
   "description": "",
-  "gameVersion": "1.18.3",
+  "gameVersion": "1.37.2",
   "dependsOn": {
     "BSIPA": "^4.2.0"
   }

@@ -1,16 +1,10 @@
-﻿
-using BeatSaberMarkupLanguage;
-using HarmonyLib;
-using levelListExtension;
+﻿using HarmonyLib;
 using levelListExtension.UI;
 using System.Collections.Generic;
-using System.Configuration;
 using System.Linq;
-using System.Windows.Forms;
 using TMPro;
 using UnityEngine;
 using UnityEngine.UI;
-using IPALogger = IPA.Logging.Logger;
 
 namespace levelListExtension.HarmonyPatches
 {
@@ -21,8 +15,8 @@ namespace levelListExtension.HarmonyPatches
         private static TextMeshProUGUI packTitle = null;
 
         public static Dictionary<string, PlayerScore> plScore = new Dictionary<string, PlayerScore>();
-        private static void Postfix(LevelListTableCell __instance, IPreviewBeatmapLevel level, bool isFavorite, ref UnityEngine.UI.Image ____favoritesBadgeImage,
-            TextMeshProUGUI ____songBpmText, TextMeshProUGUI ____songAuthorText)
+        private static void Postfix(LevelListTableCell __instance, BeatmapLevel level, bool isFavorite, ref Image ____favoritesBadgeImage,
+            ref TextMeshProUGUI ____songBpmText, ref TextMeshProUGUI ____songAuthorText)
         {
             //get packTitle
             if (packTitle == null)

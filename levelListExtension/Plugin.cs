@@ -1,17 +1,10 @@
 ﻿using IPA;
-using IPA.Config;
 using IPA.Config.Stores;
-using System;
-using System.Collections;
 using System.Collections.Generic;
-using System.Linq;
 using UnityEngine;
-using UnityEngine.SceneManagement;
 using IPALogger = IPA.Logging.Logger;
 using Steamworks;
-using HMUI;
 using System.IO;
-
 using System.Net.Http;
 using Newtonsoft.Json;
 using BeatSaberMarkupLanguage.Settings;
@@ -20,12 +13,9 @@ using HarmonyLib;
 using System.Reflection;
 using levelListExtension.HarmonyPatches;
 using BS_Utils.Utilities;
-using IPA.Utilities;
 using System.Threading.Tasks;
 using TMPro;
-using System.Security.Policy;
 using BeatSaberPlaylistsLib.Types;
-using IPA.Config.Data;
 
 namespace levelListExtension
 {
@@ -37,32 +27,13 @@ namespace levelListExtension
         private Harmony _harmony;
 
         [Init]
-        /// <summary>
-        /// Called when the plugin is first loaded by IPA (either when the game starts or when the plugin is enabled if it starts disabled).
-        /// [Init] methods that use a Constructor or called before regular methods like InitWithConfig.
-        /// Only use [Init] with one Constructor.
-        /// </summary>
         public void Init(IPALogger logger,IPA.Config.Config conf)
         {
             Instance = this;
             Log = logger;
-            Log.Info("levelListExtension initialized.");
             Configuration.Instance = conf.Generated<Configuration>();
             BSMLSettings.instance.AddSettingsMenu("levelListExtension", "levelListExtension.Settings.settings.bsml", SettingsHandler.instance);
         }
-
-        #region BSIPA Config
-        //Uncomment to use BSIPA's config
-        /*
-        [Init]
-        public void InitWithConfig(Config conf)
-        {
-            Configuration.PluginConfig.Instance = conf.Generated<Configuration.PluginConfig>();
-            Log.Debug("Config loaded");
-        }
-        */
-        #endregion
-
 
         private static int songcount = 0;
         private static int songcountBl = 0;
@@ -75,7 +46,6 @@ namespace levelListExtension
             _harmony = new Harmony("com.scifiHerb.BeatSaber.levelListExtension");
             _harmony.PatchAll(Assembly.GetExecutingAssembly());
 
-            Log.Debug("OnApplicationStart");
             new GameObject("levelListExtensionController").AddComponent<levelListExtensionController>();
             BSEvents.levelSelected += OnLevelSelected;
 
@@ -97,11 +67,9 @@ namespace levelListExtension
         [OnExit]
         public void OnApplicationQuit()
         {
-            Log.Debug("OnApplicationQuit");
-
             File.WriteAllText(songFileName, JsonConvert.SerializeObject(LevelList.plScore));
-
         }
+
         public static TextMeshProUGUI packTitle = null;
         private void onPlaylistSelected(IPlaylist p, BeatSaberPlaylistsLib.PlaylistManager pm)
         {
@@ -122,8 +90,8 @@ namespace levelListExtension
         public static Dictionary<string, string> playlistDiff = new Dictionary<string,string>();
         private void loadPlaylist(PlaylistData.Root playlistData)
         {
-            if (playlistData == null) { Plugin.Log.Info("loadPlaylist data null"); return; }
-            if (playlistData.songs == null) { Plugin.Log.Info("loadPlaylist song null"); return; }
+            if (playlistData == null) { Log.Info("loadPlaylist data null"); return; }
+            if (playlistData.songs == null) { Log.Info("loadPlaylist song null"); return; }
             playlistDiff = new Dictionary<string, string>();
 
             foreach (var song in playlistData.songs)
@@ -157,19 +125,19 @@ namespace levelListExtension
 
         }
 
-        private void OnLevelSelected(LevelCollectionViewController lc,IPreviewBeatmapLevel lv)
+        private void OnLevelSelected(LevelCollectionViewController lc, BeatmapLevel lv)
         {
-            if (!Settings.Configuration.Instance.refresh)
+            if (!Configuration.Instance.refresh)
             {
-                if (Settings.Configuration.Instance.listChoice == "Score Saber") GetSongStats(1);
-                else if (Settings.Configuration.Instance.listChoice == "Beat Leader") GetSongStatsBl(1);
+                if (Configuration.Instance.listChoice == "Score Saber") GetSongStats(1);
+                else if (Configuration.Instance.listChoice == "Beat Leader") GetSongStatsBl(1);
             }
         }
         public static async void GetSongStats(int count, TextMeshProUGUI text = null)
         {
             string url = $"https://scoresaber.com/api/player/{SteamUser.GetSteamID()}";
             var httpClient = new HttpClient();
-            if (Settings.Configuration.Instance.refresh) songcount = 0;
+            if (Configuration.Instance.refresh) songcount = 0;
 
             for (int i = 0; i < count; i++)
             {
@@ -189,7 +157,7 @@ namespace levelListExtension
                         string key = l.Leaderboard.SongHash + l.Leaderboard.Difficulty.DifficultyRaw;
                         if (LevelList.plScore.ContainsKey(key))
                         {
-                            if (Settings.Configuration.Instance.listChoice == "Score Saber" || LevelList.plScore[key].isScoreSaber == true)
+                            if (Configuration.Instance.listChoice == "Score Saber" || LevelList.plScore[key].isScoreSaber == true)
                             {
                                 LevelList.plScore.Remove(key);
                                 LevelList.plScore.Add(key, l);
@@ -227,7 +195,7 @@ namespace levelListExtension
         //https://api.beatleader.xyz/player/76561199194622414/scores?sortBy=date&page=1&count=1
             string url = $"https://api.beatleader.xyz/player/{SteamUser.GetSteamID()}";
             var httpClient = new HttpClient();
-            if (Settings.Configuration.Instance.refresh) songcountBl = 0;
+            if (Configuration.Instance.refresh) songcountBl = 0;
 
             for (int i = 0; i < count; i++)
             {
@@ -265,7 +233,6 @@ namespace levelListExtension
                         plScore.Leaderboard.SongSubName = l.leaderboard.song.subName;
                         if(l.leaderboard.difficulty.stars!=null)plScore.Leaderboard.Stars = (double)l.leaderboard.difficulty.stars;
                         plScore.isScoreSaber = false;
-                        //
                         plScore.Score.Modifiers = "";
 
                         string key = $"{l.leaderboard.song.hash.ToUpper()}_{l.leaderboard.difficulty.difficultyName}_Solo{l.leaderboard.difficulty.modeName}";
@@ -274,7 +241,7 @@ namespace levelListExtension
                         //if plScore.Leaderboard.SongName == null ->Beat Leader
                         if (LevelList.plScore.ContainsKey(key))
                         {
-                            if(Settings.Configuration.Instance.listChoice == "Beat Leader" || LevelList.plScore[key].isScoreSaber == null || LevelList.plScore[key].isScoreSaber == false)
+                            if(Configuration.Instance.listChoice == "Beat Leader" || LevelList.plScore[key].isScoreSaber == null || LevelList.plScore[key].isScoreSaber == false)
                             {
                                 LevelList.plScore.Remove(key);
                                 LevelList.plScore.Add(key, plScore);

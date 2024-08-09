@@ -1,5 +1,4 @@
 ﻿using UnityEngine;
-using static SliderController.Pool;
 
 namespace levelListExtension
 {
@@ -22,13 +21,11 @@ namespace levelListExtension
             //   and destroy any that are created while one already exists.
             if (Instance != null)
             {
-                Plugin.Log?.Warn($"Instance of {GetType().Name} already exists, destroying.");
                 GameObject.DestroyImmediate(this);
                 return;
             }
             GameObject.DontDestroyOnLoad(this); // Don't destroy this object on scene changes
             Instance = this;
-            Plugin.Log?.Debug($"{name}: Awake()");
         }
         /// <summary>
         /// Only ever called once on the first frame the script is Enabled. Start is called after any other script's Awake() and before Update().
@@ -72,10 +69,8 @@ namespace levelListExtension
         /// </summary>
         private void OnDestroy()
         {
-            Plugin.Log?.Debug($"{name}: OnDestroy()");
             if (Instance == this)
                 Instance = null; // This MonoBehaviour is being destroyed, so set the static instance property to null.
-
         }
         #endregion
     }
