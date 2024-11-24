@@ -14,7 +14,7 @@ namespace levelListExtension.UI
         public void Create(LevelSelectionNavigationController resultsView)
         {
             if (root != null) return;
-            BSMLParser.instance.Parse(
+            BSMLParser.Instance.Parse(
                 Utilities.GetResourceContent(Assembly.GetExecutingAssembly(), $"levelListExtension.UI.selectUI.bsml"),
                 resultsView.gameObject, instance
             );

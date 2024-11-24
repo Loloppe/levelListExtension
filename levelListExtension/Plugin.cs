@@ -32,7 +32,12 @@ namespace levelListExtension
             Instance = this;
             Log = logger;
             Configuration.Instance = conf.Generated<Configuration>();
-            BSMLSettings.instance.AddSettingsMenu("levelListExtension", "levelListExtension.Settings.settings.bsml", SettingsHandler.instance);
+            BeatSaberMarkupLanguage.Util.MainMenuAwaiter.MainMenuInitializing += MainMenuInit;
+        }
+
+        public void MainMenuInit()
+        {
+            BSMLSettings.Instance.AddSettingsMenu("levelListExtension", "levelListExtension.Settings.settings.bsml", SettingsHandler.instance);
         }
 
         private static int songcount = 0;

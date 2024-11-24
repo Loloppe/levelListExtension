@@ -15,7 +15,7 @@ namespace levelListExtension.HarmonyPatches
         private static TextMeshProUGUI packTitle = null;
 
         public static Dictionary<string, PlayerScore> plScore = new Dictionary<string, PlayerScore>();
-        private static void Postfix(LevelListTableCell __instance, BeatmapLevel level, bool isFavorite, ref Image ____favoritesBadgeImage,
+        private static void Postfix(LevelListTableCell __instance, BeatmapLevel beatmapLevel, bool isFavorite, ref Image ____favoritesBadgeImage,
             ref TextMeshProUGUI ____songBpmText, ref TextMeshProUGUI ____songAuthorText)
         {
             //get packTitle
@@ -35,9 +35,9 @@ namespace levelListExtension.HarmonyPatches
             selectUI.instance.Create(resultsView);
 
             //return not custom level or mod disabled
-            if (level.levelID.IndexOf("custom_level") == -1 || !Settings.Configuration.Instance.enable) return;
+            if (beatmapLevel.levelID.IndexOf("custom_level") == -1 || !Settings.Configuration.Instance.enable) return;
 
-            string levelID = level.levelID.Substring(13);
+            string levelID = beatmapLevel.levelID.Substring(13);
             ____songBpmText.text = "";
 
             string diffRaw = "";
