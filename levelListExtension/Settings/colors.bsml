@@ -1,0 +1,55 @@
+﻿<bg>
+	<vertical child-control-height='false'>
+		<tab-selector tab-tag='llx-colors'/>
+	</vertical>
+
+	<!-- tabs in their own container below the selector, packed at the top instead of centered in the panel -->
+	<vertical child-control-height='false' pad-top='10'>
+		<tab tags='llx-colors' tab-name='Rank'>
+			<vertical child-control-height='false' child-expand-height='false' spacing='1'>
+				<color-setting text='#1' value='rank1' apply-on-change='true'/>
+				<color-setting text='#2' value='rank2' apply-on-change='true'/>
+				<color-setting text='#3' value='rank3' apply-on-change='true'/>
+				<color-setting text='Other ranks' value='rankOther' apply-on-change='true'/>
+			</vertical>
+		</tab>
+		<tab tags='llx-colors' tab-name='Score'>
+			<vertical child-control-height='false' child-expand-height='false' spacing='1'>
+				<color-setting text='pp' value='pp' apply-on-change='true'/>
+				<color-setting text='FC' value='fc' apply-on-change='true'/>
+				<color-setting text='Not FC (X)' value='notFc' apply-on-change='true'/>
+				<color-setting text='ScoreSaber star' value='starSs' apply-on-change='true'/>
+				<color-setting text='BeatLeader star' value='starBl' apply-on-change='true'/>
+				<color-setting text='Mapper' value='mapper' apply-on-change='true'/>
+			</vertical>
+		</tab>
+		<tab tags='llx-colors' tab-name='Diff'>
+			<vertical child-control-height='false' child-expand-height='false' spacing='1'>
+				<color-setting text='Easy' value='easy' apply-on-change='true'/>
+				<color-setting text='Normal' value='normal' apply-on-change='true'/>
+				<color-setting text='Hard' value='hard' apply-on-change='true'/>
+				<color-setting text='Expert' value='expert' apply-on-change='true'/>
+				<color-setting text='Expert+' value='expertPlus' apply-on-change='true'/>
+			</vertical>
+		</tab>
+		<tab tags='llx-colors' tab-name='Acc 1'>
+			<vertical child-control-height='false' child-expand-height='false' spacing='1'>
+				<color-setting text='~accLabelSSS' value='accSSS' apply-on-change='true'/>
+				<color-setting text='~accLabelSSPlus' value='accSSPlus' apply-on-change='true'/>
+				<color-setting text='~accLabelSS' value='accSS' apply-on-change='true'/>
+				<color-setting text='~accLabelSPlus' value='accSPlus' apply-on-change='true'/>
+				<color-setting text='~accLabelS' value='accS' apply-on-change='true'/>
+			</vertical>
+		</tab>
+		<tab tags='llx-colors' tab-name='Acc 2'>
+			<vertical child-control-height='false' child-expand-height='false' spacing='1'>
+				<color-setting text='~accLabelA' value='accA' apply-on-change='true'/>
+				<color-setting text='~accLabelB' value='accB' apply-on-change='true'/>
+				<color-setting text='~accLabelC' value='accC' apply-on-change='true'/>
+				<color-setting text='~accLabelD' value='accD' apply-on-change='true'/>
+				<color-setting text='~accLabelE' value='accE' apply-on-change='true'/>
+				<color-setting text='~accLabelBelow' value='accBelow' apply-on-change='true'/>
+			</vertical>
+		</tab>
+	</vertical>
+</bg>

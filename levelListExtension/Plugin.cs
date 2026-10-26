@@ -39,12 +39,13 @@ namespace levelListExtension
         public void MainMenuInit()
         {
             BSMLSettings.Instance.AddSettingsMenu("levelListExtension", "levelListExtension.Settings.settings.bsml", SettingsHandler.instance);
+            BeatSaberMarkupLanguage.GameplaySetup.GameplaySetup.Instance.AddTab("levelListExtension", "levelListExtension.Settings.colors.bsml", ColorsHandler.instance);
         }
 
         //both APIs reject page sizes above 100 and page numbers below 1
         private const int PageSize = 100;
         private static readonly HttpClient httpClient = new HttpClient();
-        private string songFileName = Path.Combine(Directory.GetCurrentDirectory(), "UserData", "levelListExtension_Songs.json");
+        private static readonly string songFileName = Path.Combine(Directory.GetCurrentDirectory(), "UserData", "levelListExtension_Songs.json");
         [OnStart]
         public void OnApplicationStart()
         {
@@ -53,6 +54,9 @@ namespace levelListExtension
 
             new GameObject("levelListExtensionController").AddComponent<levelListExtensionController>();
             BSEvents.levelSelected += OnLevelSelected;
+            //levelCleared exposes a game type that no longer resolves on newer game versions, so track the scene switches instead
+            BSEvents.gameSceneActive += OnGameSceneActive;
+            BSEvents.menuSceneActive += OnMenuSceneActive;
 
             //load songs
             Dictionary<string, PlayerScore> saved = null;
@@ -72,7 +76,43 @@ namespace levelListExtension
         [OnExit]
         public void OnApplicationQuit()
         {
-            File.WriteAllText(songFileName, JsonConvert.SerializeObject(LevelList.plScore));
+            lock (saveLock) File.WriteAllText(songFileName, JsonConvert.SerializeObject(LevelList.plScore));
+        }
+
+        private static readonly object saveLock = new object();
+
+        //serialize on the main thread since the fetches modify plScore there, then write in the background so the menu does not hitch
+        private static async Task SaveCache()
+        {
+            string json = JsonConvert.SerializeObject(LevelList.plScore);
+            try
+            {
+                await Task.Run(() => { lock (saveLock) File.WriteAllText(songFileName, json); });
+            }
+            catch (Exception e)
+            {
+                Log.Error($"Failed to save the score cache: {e.Message}");
+            }
+        }
+
+        //the score sites need a few seconds to receive the new score after the map ends
+        private const int UploadDelay = 5000;
+
+        private static bool playedMap = false;
+
+        private void OnGameSceneActive()
+        {
+            playedMap = true;
+        }
+
+        //back in the menu after a map, failed or quit maps just fetch nothing new
+        private async void OnMenuSceneActive()
+        {
+            if (!playedMap) return;
+            playedMap = false;
+            await Task.Delay(UploadDelay);
+            if (Configuration.Instance.listChoice == "Score Saber") GetSongStats(RecentLimit, save: true);
+            else if (Configuration.Instance.listChoice == "Beat Leader") GetSongStatsBl(RecentLimit, save: true);
         }
 
         private void onPlaylistSelected(IPlaylist p, BeatSaberPlaylistsLib.PlaylistManager pm)
@@ -122,14 +162,18 @@ namespace levelListExtension
         {
             if (!Configuration.Instance.refresh)
             {
-                if (Configuration.Instance.listChoice == "Score Saber") GetSongStats(1);
-                else if (Configuration.Instance.listChoice == "Beat Leader") GetSongStatsBl(1);
+                if (Configuration.Instance.listChoice == "Score Saber") GetSongStats(RecentLimit);
+                else if (Configuration.Instance.listChoice == "Beat Leader") GetSongStatsBl(RecentLimit);
             }
         }
-        public static async void GetSongStats(int count, TextMeshProUGUI text = null)
+        //how many of the latest scores to fetch when only a new score is expected
+        private const int RecentLimit = 8;
+
+        //limit 0 fetches every score the player has
+        public static async void GetSongStats(int limit, TextMeshProUGUI text = null, bool save = false)
         {
             string url = $"https://scoresaber.com/api/player/{SteamUser.GetSteamID()}/scores?sort=recent";
-            int limit = count * 8;
+            if (limit <= 0) limit = int.MaxValue;
             int pageSize = Math.Min(PageSize, limit);
             int loaded = 0;
 
@@ -167,13 +211,20 @@ namespace levelListExtension
                 Log.Error($"Failed to load ScoreSaber scores: {e.Message}");
             }
 
+            if (save)
+            {
+                //cells shown while the fetch was running still have the old scores
+                LevelList.RefreshVisibleCells();
+                await SaveCache();
+            }
             await ShowCompleted(text, 2000);
         }
 
-        public static async void GetSongStatsBl(int count, TextMeshProUGUI text = null)
+        //limit 0 fetches every score the player has
+        public static async void GetSongStatsBl(int limit, TextMeshProUGUI text = null, bool save = false)
         {
             string url = $"https://api.beatleader.com/player/{SteamUser.GetSteamID()}/scores?sortBy=date";
-            int limit = count * 8;
+            if (limit <= 0) limit = int.MaxValue;
             int pageSize = Math.Min(PageSize, limit);
             int loaded = 0;
 
@@ -203,6 +254,8 @@ namespace levelListExtension
                                 ModifiedScore = (int)(l.modifiedScore ?? 0),
                                 MissedNotes = (int)(l.missedNotes ?? 0),
                                 BadCuts = (int)(l.badCuts ?? 0),
+                                FullCombo = l.fullCombo,
+                                Rank = (int)(l.rank ?? 0),
                                 Pp = l.pp ?? 0,
                                 Modifiers = l.modifiers ?? "",
                             },
@@ -238,6 +291,12 @@ namespace levelListExtension
                 Log.Error($"Failed to load BeatLeader scores: {e.Message}");
             }
 
+            if (save)
+            {
+                //cells shown while the fetch was running still have the old scores
+                LevelList.RefreshVisibleCells();
+                await SaveCache();
+            }
             await ShowCompleted(text, 1000);
         }
 

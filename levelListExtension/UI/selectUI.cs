@@ -31,8 +31,9 @@ namespace levelListExtension.UI
 
             if (Settings.Configuration.Instance.refresh)
             {
-                Plugin.GetSongStatsBl(Settings.Configuration.Instance.count, statusText);
-                Plugin.GetSongStats(Settings.Configuration.Instance.count, statusText);
+                //fetch every score, otherwise maps played long ago only get the other source's score
+                Plugin.GetSongStatsBl(0, statusText, save: true);
+                Plugin.GetSongStats(0, statusText, save: true);
                 Settings.Configuration.Instance.refresh = false;
             }
         }

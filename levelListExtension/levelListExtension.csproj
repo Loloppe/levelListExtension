@@ -161,6 +161,7 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="HarmonyPatches\LevelSelectionPatches.cs" />
+    <Compile Include="Settings\ColorsHandler.cs" />
     <Compile Include="PlayerScores.cs" />
     <Compile Include="PlayerScoresBl.cs" />
     <Compile Include="PlaylistData.cs" />
@@ -179,6 +180,7 @@
     <None Include="Directory.Build.props" Condition="Exists('Directory.Build.props')" />
     <None Include="levelListExtension.csproj.user" Condition="Exists('levelListExtension.csproj.user')" />
     <EmbeddedResource Include="Settings\settings.bsml" />
+    <EmbeddedResource Include="Settings\colors.bsml" />
   </ItemGroup>
   <ItemGroup>
     <PackageReference Include="BeatSaberModdingTools.Tasks">
