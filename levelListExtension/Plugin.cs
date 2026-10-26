@@ -60,6 +60,13 @@ namespace levelListExtension
             LevelList.plScore = saved ?? new Dictionary<string, PlayerScore>();
 
             PlaylistManager.Utilities.Events.playlistSelected += onPlaylistSelected;
+            BSEvents.levelPackSelected += OnLevelPackSelected;
+        }
+
+        //playlistDiff only applies to the playlist it was loaded from
+        private void OnLevelPackSelected(LevelSelectionNavigationController controller, BeatmapLevelPack pack)
+        {
+            if (!(pack is PlaylistLevelPack)) playlistDiff.Clear();
         }
 
         [OnExit]
@@ -86,9 +93,9 @@ namespace levelListExtension
         public static Dictionary<string, string> playlistDiff = new Dictionary<string,string>();
         private void loadPlaylist(PlaylistData.Root playlistData)
         {
+            playlistDiff.Clear();
             if (playlistData == null) { Log.Info("loadPlaylist data null"); return; }
             if (playlistData.songs == null) { Log.Info("loadPlaylist song null"); return; }
-            playlistDiff = new Dictionary<string, string>();
 
             foreach (var song in playlistData.songs)
             {
@@ -197,7 +204,7 @@ namespace levelListExtension
                                 MissedNotes = (int)(l.missedNotes ?? 0),
                                 BadCuts = (int)(l.badCuts ?? 0),
                                 Pp = l.pp ?? 0,
-                                Modifiers = "",
+                                Modifiers = l.modifiers ?? "",
                             },
                             Leaderboard = new Leaderboard
                             {

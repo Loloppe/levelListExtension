@@ -29,6 +29,13 @@ namespace levelListExtension.HarmonyPatches
         //how far everything moves up to make room for the score line, half of LevelListCellSize.ExtraHeight
         private const float ScoredOffsetY = LevelListCellSize.ExtraHeight / 2;
         private const string ScoreTextName = "levelListExtensionScore";
+        //score line column start positions, in percent of the line width
+        private const string ColumnDiff = "0";
+        //fixed slot after the widest difficulty label (Ex+) so the stars line up whatever the difficulty
+        private const string ColumnStars = "7";
+        private const string ColumnAcc = "22.5";
+        private const string ColumnPp = "39";
+        private const string ColumnMisses = "58.5";
 
         private static void Postfix(LevelListTableCell __instance, BeatmapLevel beatmapLevel, bool isFavorite, ref Image ____favoritesBadgeImage,
             ref TextMeshProUGUI ____songNameText, ref TextMeshProUGUI ____songDurationText,
@@ -118,35 +125,33 @@ namespace levelListExtension.HarmonyPatches
                 }
 
                 float acc = ((float)score.Score.ModifiedScore / score.Leaderboard.MaxScore) * 100;
-                string accText;
                 string accColor;
 
-                //set rank acc
-                if (acc >= config.Rank_SSS) { accText = "SSS"; accColor = config.Rank_SSS_Color; }
-                else if (acc >= config.Rank_SSPlus) { accText = "SS+"; accColor = config.Rank_SSPlus_Color; }
-                else if (acc >= config.Rank_SS) { accText = "SS"; accColor = config.Rank_SS_Color; }
-                else if (acc >= config.Rank_SPlus) { accText = "S+"; accColor = config.Rank_SPlus_Color; }
-                else if (acc >= config.Rank_S) { accText = "S"; accColor = config.Rank_S_Color; }
-                else if (acc >= config.Rank_A) { accText = "A"; accColor = config.Rank_A_Color; }
-                else if (acc >= config.Rank_B) { accText = "B"; accColor = config.Rank_B_Color; }
-                else if (acc >= config.Rank_C) { accText = "C"; accColor = config.Rank_C_Color; }
-                else if (acc >= config.Rank_D) { accText = "D"; accColor = config.Rank_D_Color; }
-                else { accText = "E"; accColor = config.Rank_E_Color; }
+                //accuracy color from the rank thresholds
+                if (acc >= config.Rank_SSS) accColor = config.Rank_SSS_Color;
+                else if (acc >= config.Rank_SSPlus) accColor = config.Rank_SSPlus_Color;
+                else if (acc >= config.Rank_SS) accColor = config.Rank_SS_Color;
+                else if (acc >= config.Rank_SPlus) accColor = config.Rank_SPlus_Color;
+                else if (acc >= config.Rank_S) accColor = config.Rank_S_Color;
+                else if (acc >= config.Rank_A) accColor = config.Rank_A_Color;
+                else if (acc >= config.Rank_B) accColor = config.Rank_B_Color;
+                else if (acc >= config.Rank_C) accColor = config.Rank_C_Color;
+                else if (acc >= config.Rank_D) accColor = config.Rank_D_Color;
+                else accColor = config.Rank_E_Color;
 
                 //star color
                 string starColor = score.isScoreSaber == true ? "#FFCC4E" : "#FF00FF";
 
                 //build the whole line at once so TMP only re-parses it once
+                //each column starts at a fixed fraction of the line width so they line up across rows
                 var sb = new System.Text.StringBuilder(256);
-                sb.Append($"<color={diffColor}>{diff}</color>(<color={starColor}>★</color>{score.Leaderboard.Stars.ToString("F1")}) ");
-                sb.Append($"<color={accColor}>{accText}</color>(<color={accColor}>{acc.ToString("F1")}</color>%) ");
-                //add modifiers
-                if (!string.IsNullOrEmpty(score.Score.Modifiers)) sb.Append($"[{score.Score.Modifiers}]");
-                //add missed notes,pp
-                sb.Append($"<color=#FF0000>x</color>(<color=#FF0000>{score.Score.MissedNotes + score.Score.BadCuts}</color>)");
-                sb.Append($"<color=#00FF00>{score.Score.Pp.ToString("F1")}</color>pp");
-                //add text
-                if (Plugin.playlistDiff.ContainsKey(levelID)) sb.Append('*');
+                sb.Append($"<pos={ColumnDiff}%><color={diffColor}>{diff}</color><pos={ColumnStars}%>(<color={starColor}>★</color>{score.Leaderboard.Stars.ToString("F1")})");
+                sb.Append($"<pos={ColumnAcc}%><color={accColor}>{acc.ToString("F2")}%</color>");
+                //add pp, then missed notes with modifiers and the playlist marker after them
+                sb.Append($"<pos={ColumnPp}%><color=#00FF00>{score.Score.Pp.ToString("F2")}</color>pp");
+                sb.Append($"<pos={ColumnMisses}%><color=#FF0000>x</color>(<color=#FF0000>{score.Score.MissedNotes + score.Score.BadCuts}</color>)");
+                if (!string.IsNullOrEmpty(score.Score.Modifiers)) sb.Append($" [{score.Score.Modifiers}]");
+                if (isPlaylist && Plugin.playlistDiff.ContainsKey(levelID)) sb.Append('*');
                 scoreText.text = sb.ToString();
 
                 //artist and mapper share the second line, the score gets its own line below
