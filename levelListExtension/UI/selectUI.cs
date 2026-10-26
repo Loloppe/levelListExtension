@@ -11,6 +11,8 @@ namespace levelListExtension.UI
     {
         static public selectUI instance = new selectUI();
 
+        public bool IsCreated => root != null;
+
         public void Create(LevelSelectionNavigationController resultsView)
         {
             if (root != null) return;

@@ -15,9 +15,31 @@ namespace levelListExtension.HarmonyPatches
         private static TextMeshProUGUI packTitle = null;
 
         public static Dictionary<string, PlayerScore> plScore = new Dictionary<string, PlayerScore>();
+
+        //lookup order: characteristic first, then from the selected difficulty down to Easy
+        private static readonly string[] characteristics = { "SoloLawless", "SoloStandard", "SoloOneSaber", "Solo360Degree" };
+        private static readonly string[] difficulties = { "Easy", "Normal", "Hard", "Expert", "ExpertPlus" };
+        private static readonly string[][] diffKeys = characteristics
+            .Select(c => difficulties.Select(d => "_" + d + "_" + c).ToArray())
+            .ToArray();
+
+        //vanilla y positions of the cell texts, from the LevelListTableCell prefab (all anchored to the vertical center)
+        private const float NameY = 1.2F;
+        private const float AuthorY = -1.6F;
+        //how far everything moves up to make room for the score line, half of LevelListCellSize.ExtraHeight
+        private const float ScoredOffsetY = LevelListCellSize.ExtraHeight / 2;
+        private const string ScoreTextName = "levelListExtensionScore";
+
         private static void Postfix(LevelListTableCell __instance, BeatmapLevel beatmapLevel, bool isFavorite, ref Image ____favoritesBadgeImage,
+            ref TextMeshProUGUI ____songNameText, ref TextMeshProUGUI ____songDurationText,
             ref TextMeshProUGUI ____songBpmText, ref TextMeshProUGUI ____songAuthorText)
         {
+            var config = Settings.Configuration.Instance;
+
+            //cells are reused, so start from the vanilla layout every time
+            var scoreText = GetScoreText(__instance, ____songBpmText);
+            SetLayout(scoreText, ____songNameText, ____songDurationText, ____songAuthorText, ____songBpmText, false);
+
             //get packTitle
             if (packTitle == null)
             {
@@ -28,214 +50,170 @@ namespace levelListExtension.HarmonyPatches
                     if (b != null) packTitle = b.GetComponent<TextMeshProUGUI>();
                 }
             }
-            bool isPlaylist = false;
-            if (packTitle && packTitle.text != "Custom Levels") isPlaylist = true;
+            bool isPlaylist = packTitle && packTitle.text != "Custom Levels";
             //-----------------------------------
-            var resultsView = Resources.FindObjectsOfTypeAll<LevelSelectionNavigationController>().FirstOrDefault();
-            selectUI.instance.Create(resultsView);
+            if (!selectUI.instance.IsCreated)
+            {
+                var resultsView = Resources.FindObjectsOfTypeAll<LevelSelectionNavigationController>().FirstOrDefault();
+                selectUI.instance.Create(resultsView);
+            }
 
             //return not custom level or mod disabled
-            if (beatmapLevel.levelID.IndexOf("custom_level") == -1 || !Settings.Configuration.Instance.enable) return;
+            if (!config.enable || !beatmapLevel.levelID.StartsWith("custom_level", System.StringComparison.Ordinal)) return;
 
             string levelID = beatmapLevel.levelID.Substring(13);
-            ____songBpmText.text = "";
-
-            string diffRaw = "";
-            int selectDiff = Settings.Configuration.Instance.selectDiff;
 
             //get song highScore
             //set difficulty name
-            if (Plugin.playlistDiff.ContainsKey(levelID) && Settings.Configuration.Instance.priorityPlaylist && isPlaylist)
+            string diffRaw = null;
+            PlayerScore score = null;
+            if (config.priorityPlaylist && isPlaylist && Plugin.playlistDiff.TryGetValue(levelID, out diffRaw))
             {
-                diffRaw = Plugin.playlistDiff[levelID];
+                plScore.TryGetValue(levelID + diffRaw, out score);
             }
             else
             {
-                selectDiff = Settings.Configuration.Instance.selectDiff;
-                for (; selectDiff != -1; selectDiff--)
+                int maxDiff = Mathf.Clamp(config.selectDiff, 0, difficulties.Length - 1);
+                foreach (var keys in diffKeys)
                 {
-                    switch (selectDiff)
+                    for (int d = maxDiff; d >= 0; d--)
                     {
-                        case 4:
-                            diffRaw = "_ExpertPlus_SoloLawless";
-                            break;
-                        case 3:
-                            diffRaw = "_Expert_SoloLawless";
-                            break;
-                        case 2:
-                            diffRaw = "_Hard_SoloLawless";
-                            break;
-                        case 1:
-                            diffRaw = "_Normal_SoloLawless";
-                            break;
-                        case 0:
-                            diffRaw = "_Easy_SoloLawless";
-                            break;
+                        if (plScore.TryGetValue(levelID + keys[d], out score))
+                        {
+                            diffRaw = keys[d];
+                            goto endSelectDiff;
+                        }
                     }
-
-                    if (plScore.ContainsKey(levelID + diffRaw)) goto endSelectDiff;
-                }
-                selectDiff = Settings.Configuration.Instance.selectDiff;
-                for (; selectDiff != -1; selectDiff--)
-                {
-                    switch (selectDiff)
-                    {
-                        case 4:
-                            diffRaw = "_ExpertPlus_SoloStandard";
-                            break;
-                        case 3:
-                            diffRaw = "_Expert_SoloStandard";
-                            break;
-                        case 2:
-                            diffRaw = "_Hard_SoloStandard";
-                            break;
-                        case 1:
-                            diffRaw = "_Normal_SoloStandard";
-                            break;
-                        case 0:
-                            diffRaw = "_Easy_SoloStandard";
-                            break;
-                    }
-
-                    if (plScore.ContainsKey(levelID + diffRaw)) goto endSelectDiff;
-                }
-
-                selectDiff = Settings.Configuration.Instance.selectDiff;
-                for (; selectDiff != -1; selectDiff--)
-                {
-                    switch (selectDiff)
-                    {
-                        case 4:
-                            diffRaw = "_ExpertPlus_SoloOneSaber";
-                            break;
-                        case 3:
-                            diffRaw = "_Expert_SoloOneSaber";
-                            break;
-                        case 2:
-                            diffRaw = "_Hard_SoloOneSaber";
-                            break;
-                        case 1:
-                            diffRaw = "_Normal_SoloOneSaber";
-                            break;
-                        case 0:
-                            diffRaw = "_Easy_SoloOneSaber";
-                            break;
-                    }
-
-                    if (plScore.ContainsKey(levelID + diffRaw)) goto endSelectDiff;
-                }
-
-                selectDiff = Settings.Configuration.Instance.selectDiff;
-                for (; selectDiff != -1; selectDiff--)
-                {
-                    switch (selectDiff)
-                    {
-                        case 4:
-                            diffRaw = "_ExpertPlus_Solo360Degree";
-                            break;
-                        case 3:
-                            diffRaw = "_Expert_Solo360Degree";
-                            break;
-                        case 2:
-                            diffRaw = "_Hard_Solo360Degree";
-                            break;
-                        case 1:
-                            diffRaw = "_Normal_Solo360Degree";
-                            break;
-                        case 0:
-                            diffRaw = "_Easy_Solo360Degree";
-                            break;
-                    }
-
-                    if (plScore.ContainsKey(levelID + diffRaw)) goto endSelectDiff;
                 }
             }
             endSelectDiff:
 
-            if (plScore.ContainsKey(levelID+ diffRaw))
+            if (score != null)
             {
                 //setText
-                //string diff = plScore[levelID].Leaderboard.Difficulty.DifficultyRaw;
                 string diff = "";
                 string diffColor = "#FFFFFF";
                 switch (diffRaw)
                 {
                     case "_ExpertPlus_SoloStandard":
                         diff = "Ex+";
-                        diffColor = Settings.Configuration.Instance.Difficulty_ExPlus_Color;
+                        diffColor = config.Difficulty_ExPlus_Color;
                         break;
                     case "_Expert_SoloStandard":
                         diff = "Ex";
-                        diffColor = Settings.Configuration.Instance.Difficulty_Ex_Color;
+                        diffColor = config.Difficulty_Ex_Color;
                         break;
                     case "_Hard_SoloStandard":
                         diff = "H";
-                        diffColor = Settings.Configuration.Instance.Difficulty_Hard_Color;
+                        diffColor = config.Difficulty_Hard_Color;
                         break;
                     case "_Normal_SoloStandard":
                         diff = "N";
-                        diffColor = Settings.Configuration.Instance.Difficulty_Normal_Color;
+                        diffColor = config.Difficulty_Normal_Color;
                         break;
                     case "_Easy_SoloStandard":
                         diff = "E";
-                        diffColor = Settings.Configuration.Instance.Difficulty_Easy_Color;
+                        diffColor = config.Difficulty_Easy_Color;
                         break;
                 }
-                
-                float acc = ((float)plScore[levelID+diffRaw].Score.ModifiedScore / plScore[levelID + diffRaw].Leaderboard.MaxScore) * 100;
-                string accText = "";
-                string accColor = "#FFFFFF";
+
+                float acc = ((float)score.Score.ModifiedScore / score.Leaderboard.MaxScore) * 100;
+                string accText;
+                string accColor;
 
                 //set rank acc
-                if (acc >= Settings.Configuration.Instance.Rank_SSS) { accText = "SSS"; accColor = Settings.Configuration.Instance.Rank_SSS_Color; }
-                else if (acc >= Settings.Configuration.Instance.Rank_SSPlus) { accText = "SS+"; accColor = Settings.Configuration.Instance.Rank_SSPlus_Color; }
-                else if (acc >= Settings.Configuration.Instance.Rank_SS) { accText = "SS"; accColor = Settings.Configuration.Instance.Rank_SS_Color; }
-                else if (acc >= Settings.Configuration.Instance.Rank_SPlus) { accText = "S+"; accColor = Settings.Configuration.Instance.Rank_SPlus_Color; }
-                else if (acc >= Settings.Configuration.Instance.Rank_S) { accText = "S"; accColor = Settings.Configuration.Instance.Rank_S_Color; }
-                else if (acc >= Settings.Configuration.Instance.Rank_A) { accText = "A"; accColor = Settings.Configuration.Instance.Rank_A_Color; }
-                else if (acc >= Settings.Configuration.Instance.Rank_B) { accText = "B"; accColor = Settings.Configuration.Instance.Rank_B_Color; }
-                else if (acc >= Settings.Configuration.Instance.Rank_C) { accText = "C"; accColor = Settings.Configuration.Instance.Rank_C_Color; }
-                else if (acc >= Settings.Configuration.Instance.Rank_D) { accText = "D"; accColor = Settings.Configuration.Instance.Rank_D_Color; }
-                else if (acc < Settings.Configuration.Instance.Rank_D) { accText = "E"; accColor = Settings.Configuration.Instance.Rank_E_Color; }
+                if (acc >= config.Rank_SSS) { accText = "SSS"; accColor = config.Rank_SSS_Color; }
+                else if (acc >= config.Rank_SSPlus) { accText = "SS+"; accColor = config.Rank_SSPlus_Color; }
+                else if (acc >= config.Rank_SS) { accText = "SS"; accColor = config.Rank_SS_Color; }
+                else if (acc >= config.Rank_SPlus) { accText = "S+"; accColor = config.Rank_SPlus_Color; }
+                else if (acc >= config.Rank_S) { accText = "S"; accColor = config.Rank_S_Color; }
+                else if (acc >= config.Rank_A) { accText = "A"; accColor = config.Rank_A_Color; }
+                else if (acc >= config.Rank_B) { accText = "B"; accColor = config.Rank_B_Color; }
+                else if (acc >= config.Rank_C) { accText = "C"; accColor = config.Rank_C_Color; }
+                else if (acc >= config.Rank_D) { accText = "D"; accColor = config.Rank_D_Color; }
+                else { accText = "E"; accColor = config.Rank_E_Color; }
 
                 //star color
-                string starColor = "";
-                if (plScore[levelID + diffRaw].isScoreSaber == true) starColor = "#FFCC4E";
-                else starColor = "#FF00FF";
+                string starColor = score.isScoreSaber == true ? "#FFCC4E" : "#FF00FF";
 
-                ____songBpmText.text = $"<color={diffColor}>{diff}</color>(<color={starColor}>★</color>{plScore[levelID + diffRaw].Leaderboard.Stars.ToString("F1")}) " +
-                $"<color={accColor}>{accText}</color>(<color={accColor}>{acc.ToString("F1")}</color>%) ";
-
+                //build the whole line at once so TMP only re-parses it once
+                var sb = new System.Text.StringBuilder(256);
+                sb.Append($"<color={diffColor}>{diff}</color>(<color={starColor}>★</color>{score.Leaderboard.Stars.ToString("F1")}) ");
+                sb.Append($"<color={accColor}>{accText}</color>(<color={accColor}>{acc.ToString("F1")}</color>%) ");
                 //add modifiers
-                if(plScore[levelID + diffRaw].Score.Modifiers!= "")____songBpmText.text += $"[{plScore[levelID + diffRaw].Score.Modifiers}]";
+                if (!string.IsNullOrEmpty(score.Score.Modifiers)) sb.Append($"[{score.Score.Modifiers}]");
                 //add missed notes,pp
-                ____songBpmText.text += $"<color=#FF0000>x</color>(<color=#FF0000>{(plScore[levelID + diffRaw].Score.MissedNotes + plScore[levelID + diffRaw].Score.BadCuts)}</color>)" +
-                $"<color=#00FF00>{plScore[levelID + diffRaw].Score.Pp.ToString("F1")}</color>pp";
-
+                sb.Append($"<color=#FF0000>x</color>(<color=#FF0000>{score.Score.MissedNotes + score.Score.BadCuts}</color>)");
+                sb.Append($"<color=#00FF00>{score.Score.Pp.ToString("F1")}</color>pp");
                 //add text
-                if(Plugin.playlistDiff.ContainsKey(levelID))____songBpmText.text += "*";
+                if (Plugin.playlistDiff.ContainsKey(levelID)) sb.Append('*');
+                scoreText.text = sb.ToString();
 
-                //set ui
-                ____songAuthorText.GetComponent<RectTransform>().anchorMax = new Vector2(0.5F, 0.5F);
-                var bpmIcon = ____songAuthorText.transform.parent.Find("BpmIcon");
-                if (bpmIcon != null) bpmIcon.gameObject.SetActive(false);
-
-                var songAuthorText = ____songAuthorText.transform.parent.Find("SongAuthor");
-                if (songAuthorText != null) songAuthorText.GetComponent<TextMeshProUGUI>().text = 
-                        $"[<color=#00FF00>{plScore[levelID + diffRaw].Leaderboard.LevelAuthorName}</color>]";
-
-                //debug
-                /*Plugin.Log.Info($"pMod:{plScore[levelID + diffRaw].Leaderboard.PositiveModifiers}" +
-                    $"modscore:{plScore[levelID + diffRaw].Score.ModifiedScore}" +
-                    $"mod:{plScore[levelID + diffRaw].Score.Modifiers}");*/
+                //artist and mapper share the second line, the score gets its own line below
+                //built from the level instead of the current text, since the game skips resetting it when the same level is set twice
+                ____songAuthorText.text = $"{beatmapLevel.songAuthorName} [<color=#00FF00>{score.Leaderboard.LevelAuthorName}</color>]";
+                SetLayout(scoreText, ____songNameText, ____songDurationText, ____songAuthorText, ____songBpmText, true);
             }
-            else
-            {
-                ____songAuthorText.GetComponent<RectTransform>().anchorMax = new Vector2(1F, 0.5F);
-                var bpmIcon = ____songAuthorText.transform.parent.Find("BpmIcon");
-                if (bpmIcon != null) bpmIcon.gameObject.SetActive(true);
+        }
 
-            }
+        private static TextMeshProUGUI GetScoreText(LevelListTableCell cell, TextMeshProUGUI songBpmText)
+        {
+            var existing = cell.transform.Find(ScoreTextName);
+            if (existing != null) return existing.GetComponent<TextMeshProUGUI>();
+
+            //clone the bpm text so the new line uses the same font and material
+            var scoreText = Object.Instantiate(songBpmText, songBpmText.transform.parent, false);
+            scoreText.name = ScoreTextName;
+            scoreText.alignment = TextAlignmentOptions.MidlineLeft;
+            scoreText.overflowMode = TextOverflowModes.Ellipsis;
+
+            //full width under the author, from the author's left edge to the cell's right edge
+            var rect = scoreText.rectTransform;
+            var authorRect = cell.transform.Find("SongAuthor") as RectTransform;
+            float left = authorRect != null ? authorRect.anchoredPosition.x : 9.28F;
+            rect.anchorMin = new Vector2(0F, 0.5F);
+            rect.anchorMax = new Vector2(1F, 0.5F);
+            rect.pivot = new Vector2(0F, 0.5F);
+            //same height as the author text, Ellipsis hides the whole line if it is taller than the rect
+            rect.sizeDelta = new Vector2(-left - 2F, authorRect != null ? authorRect.sizeDelta.y : 6F);
+            rect.anchoredPosition = new Vector2(left, AuthorY + ScoredOffsetY - LevelListCellSize.ExtraHeight);
+            return scoreText;
+        }
+
+        private static void SetLayout(TextMeshProUGUI scoreText, TextMeshProUGUI songNameText, TextMeshProUGUI songDurationText,
+            TextMeshProUGUI songAuthorText, TextMeshProUGUI songBpmText, bool scored)
+        {
+            float offset = scored ? ScoredOffsetY : 0F;
+            SetY(songNameText.rectTransform, NameY + offset);
+            SetY(songDurationText.rectTransform, NameY + offset);
+            SetY(songAuthorText.rectTransform, AuthorY + offset);
+            SetY(songBpmText.rectTransform, AuthorY + offset);
+            var bpmIcon = songBpmText.transform.parent.Find("BpmIcon") as RectTransform;
+            if (bpmIcon != null) SetY(bpmIcon, AuthorY + offset);
+
+            scoreText.gameObject.SetActive(scored);
+            if (!scored) scoreText.text = "";
+        }
+
+        private static void SetY(RectTransform rect, float y)
+        {
+            var pos = rect.anchoredPosition;
+            if (pos.y != y) rect.anchoredPosition = new Vector2(pos.x, y);
+        }
+    }
+
+    //makes song rows one text line taller so the score fits under the artist/mapper line
+    [HarmonyPatch(typeof(LevelCollectionTableView), nameof(LevelCollectionTableView.CellSize))]
+    internal class LevelListCellSize
+    {
+        //same spacing as between the song name and author lines
+        public const float ExtraHeight = 2.8F;
+
+        private static void Postfix(int idx, bool ____showLevelPackHeader, ref float __result)
+        {
+            if (__result <= 0F || !Settings.Configuration.Instance.enable) return;
+            if (idx == 0 && ____showLevelPackHeader) return;
+            __result += ExtraHeight;
         }
     }
 }
